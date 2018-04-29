@@ -1,7 +1,11 @@
 ---
+plugins:
+  - jest
+
 env:
   node: true
   browser: true
+  jest: true
 
 parser: babel-eslint
 
