@@ -13,6 +13,7 @@ This programm downloads the page from web to specified folder (to the program's 
 
 # Use:
 `$ pageloader url` - save this page to current directory.
+
 `$ pageloader url --output path/to/dir` - save this page to specified directory.
 
 # Filename:
