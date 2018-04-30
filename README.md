@@ -1,5 +1,5 @@
 # Pageloader
-This programm downloads the page from web to specified folder (to the program's start directory by default).
+This program downloads the page from web to specified folder (to the program's start directory by default).
 
 ## project-lvl3-s238
 
