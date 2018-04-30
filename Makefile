@@ -2,7 +2,7 @@ install:
 	npm install
 
 start:
-	npm run babel-node -- src/bin/binfile.js
+	npm run babel-node -- src/bin/pageloader.js
 
 lint:
 	npm run eslint .
@@ -14,4 +14,7 @@ test:
 	npm test
 
 test-coverage:
-	npm test --coverage
+	npm test -- --coverage
+
+q:
+	npm run babel-node
