@@ -1,8 +1,5 @@
-global:
-  - CC_TEST_REPORTER_ID=e456ec54dbde342044240e98ce5a86c494e966a377aa0048c7c545cc55a13e70
-
-
 language: node_js
+
 node_js:
   - stable
 
@@ -17,3 +14,6 @@ script:
 
 after_script:
   - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+
+notifications:
+  email: false
