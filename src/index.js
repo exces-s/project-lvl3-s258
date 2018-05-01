@@ -16,8 +16,7 @@ const pageLoad = (uri, destPath) =>
   axios.get(uri)
     .then(({ data }) => {
       const fileName = urlToFilename(uri);
-      const fullPath = path.resolve(destPath, fileName);
-      console.log(fullPath);
+      const fullPath = path.join(destPath, fileName);
       fs.writeFile(fullPath, data, 'utf8');
     })
     .catch(e => console.log(e));

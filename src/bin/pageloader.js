@@ -8,6 +8,6 @@ commander
   .version(version)
   .description('Download the page from web to specified folder(to the program\'s start directory by default)')
   .arguments('<url>')
-  .option('-o, --output [path]', 'Output path', __dirname)
+  .option('-o, --output [path]', 'Output path', '.')
   .action(url => pageLoad(url, commander.output))
   .parse(process.argv);
