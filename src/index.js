@@ -4,13 +4,6 @@ import url from 'url';
 import path from 'path';
 
 
-const pathActions = {
-  undefined: path.resolve,
-  '--output': path.join,
-};
-
-const getAction = option => pathActions[option];
-
 const urlToFilename = (uri) => {
   const regex = /\W/g;
   const { protocol } = url.parse(uri);
@@ -19,12 +12,12 @@ const urlToFilename = (uri) => {
   return `${fileName}.html`;
 };
 
-const pageLoad = (uri, option, destPath = '') =>
+const pageLoad = (uri, destPath) =>
   axios.get(uri)
     .then(({ data }) => {
       const fileName = urlToFilename(uri);
-      const pathAction = getAction(option);
-      const fullPath = pathAction(destPath, fileName);
+      const fullPath = path.resolve(destPath, fileName);
+      console.log(fullPath);
       fs.writeFile(fullPath, data, 'utf8');
     })
     .catch(e => console.log(e));

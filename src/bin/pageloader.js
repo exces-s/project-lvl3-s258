@@ -4,14 +4,10 @@ import pageLoad from '..';
 import { version } from '../../package.json';
 
 
-const program = commander;
-
-program
+commander
   .version(version)
-  .arguments('<url> [options] [path]')
-  .description('Download the page from web to specified folder(to the program\'s start directory by default )')
-  .option('--output', 'Output folder')
-  .action((url, option, path) => pageLoad(url, option, path))
+  .description('Download the page from web to specified folder(to the program\'s start directory by default)')
+  .arguments('<url>')
+  .option('-o, --output [path]', 'Output path', __dirname)
+  .action(url => pageLoad(url, commander.output))
   .parse(process.argv);
-
-console.log('Page was downloaded');

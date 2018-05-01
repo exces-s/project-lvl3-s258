@@ -28,7 +28,7 @@ test('check for correct jest work', () => {
 test('pageLoader test with --output', async () => {
   expect.assertions(1);
   await fs.writeFile(pathToResultFile, '', 'utf8');
-  await pageLoad(testUrl, '--output', destPath);
+  await pageLoad(testUrl, destPath);
   const expected = await fs.readFile(pathToResultFile, 'utf8');
   expect(expected).toBe(testData);
 });
