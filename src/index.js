@@ -33,17 +33,13 @@ const getFilepaths = (links, dirPath) =>
     path.join(dirPath, urlToFilename(item)));
 
 const getLinksByTag = (tag, html) => {
+  const attr = tag === 'img' ? 'src' : 'href';
   const links = [];
   const $ = cheerio.load(html);
-  if (tag === 'img') {
-    $(tag).each(function () {
-      links.push($(this).attr('src'));
-    });
-  } else {
-    $(tag).each(function () {
-      links.push($(this).attr('href'));
-    });
-  }
+  $(tag).each(function () {
+    links.push($(this).attr(attr));
+  });
+
   return links.filter(v => v);
 };
 
