@@ -16,5 +16,5 @@ test:
 test-coverage:
 	npm test -- --coverage
 
-q:
-	npm run babel-node
+build:
+	npm run build
