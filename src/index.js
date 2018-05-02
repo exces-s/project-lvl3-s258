@@ -3,63 +3,67 @@ import fs from 'mz/fs';
 import url from 'url';
 import path from 'path';
 import cheerio from 'cheerio';
+import _ from 'lodash';
 
 
-const urlToName = (uri) => {
-  const parced = url.parse(uri);
-  if (parced.protocol !== null) {
-    return urlToName(url.format({ ...parced, protocol: null }));
+const urlToNameWithoutExt = (uri) => {
+  const data = url.parse(uri);
+  if (data.protocol !== null) {
+    const options = { host: data.host, pathname: data.pathname };
+    return urlToNameWithoutExt(url.format(options));
   }
-  if (uri[0] === '/') {
-    return urlToName(uri.slice(1));
-  }
-  if (uri[uri.length - 1] === '/') {
-    return urlToName(uri.slice(0, uri.length - 1));
+  if (_.head(uri) === '/' || _.last(uri) === '/') {
+    return urlToNameWithoutExt(_.trim(uri, '/'));
   }
   const regex = /\W/g;
-  const fileName = uri.replace(regex, '-');
-  return fileName;
+  return _.replace(uri, regex, '-');
 };
 
-const getFileName = (link) => {
-  const parsed = path.parse(link);
-  const newPath = path.format({ ...parsed, base: null, ext: null });
-  return `${urlToName(newPath)}${parsed.ext}`;
+const urlToNameWithExt = (uri, end) =>
+  [urlToNameWithoutExt(uri), end].join('');
+
+const urlToFilename = (link) => {
+  const data = path.parse(link);
+  const newPath = path.format({ ...data, base: null, ext: null });
+  return urlToNameWithExt(newPath, data.ext);
 };
 
-const getFileNames = (links, dirPath) =>
+const getFilepaths = (links, dirPath) =>
   links.map(item =>
-    path.join(dirPath, getFileName(item)));
+    path.join(dirPath, urlToFilename(item)));
 
 const getLinksByTag = (tag, html) => {
   const links = [];
   const $ = cheerio.load(html);
-  $(tag).each(function iter() {
-    links.push($(this).attr('src'));
-    links.push($(this).attr('href'));
-  });
+  if (tag === 'img') {
+    $(tag).each(function () {
+      links.push($(this).attr('src'));
+    });
+  } else {
+    $(tag).each(function () {
+      links.push($(this).attr('href'));
+    });
+  }
   return links.filter(v => v);
 };
 
-const getInitLinks = (body, tag) => {
+const getLocalLinks = (body, tag) => {
   const allTagsLinks = getLinksByTag(tag, body);
-  const rightLinks = allTagsLinks
-    .filter((item) => {
-      const parsed = url.parse(item);
-      return parsed.protocol === null;
-    });
-  return rightLinks;
+  return allTagsLinks.filter((item) => {
+    const data = url.parse(item);
+    return data.protocol === null;
+  });
 };
 
 const getFullLinks = (links, uri) =>
   links.map(item => url.resolve(uri, item));
 
 
-const replaceLinks = (html, links, dirName, attr) => {
+const replaceLinksByAttr = (html, links, dirName, attr) => {
   const $ = cheerio.load(html);
 
   links.forEach((item) => {
-    const newUrl = path.join(dirName, getFileName(item));
+    const newUrl = path.join(dirName, urlToFilename(item));
     return $(`[${attr}="${item}"]`).each(function iter() {
       $(this).attr(attr, newUrl);
     });
@@ -68,51 +72,65 @@ const replaceLinks = (html, links, dirName, attr) => {
   return $.html();
 };
 
+const replaceLinks = (html, hrefLinks, srcLinks, dirName) => {
+  const replacedHref = replaceLinksByAttr(html, hrefLinks, dirName, 'href');
+  const replacedAll = replaceLinksByAttr(replacedHref, srcLinks, dirName, 'src');
+
+  return replacedAll;
+};
+
+const writeFile = (filePath, data) =>
+  fs.writeFile(filePath, data, 'utf8');
+
+const mkdir = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    return fs.mkdir(dirPath);
+  }
+  return Promise.resolve();
+};
+
+const loadData = (uri, ...links) => {
+  const allLinks = _.flatten(links);
+  const options = { method: 'get', responseType: 'stream' };
+  const fullLinks = getFullLinks(allLinks, uri);
+  const requests = fullLinks.map(value =>
+    axios({ ...options, url: value }));
+  return Promise.all(requests);
+};
+
+const getLinks = (html, hrefLinks, srcLinks) => {
+  hrefLinks.push(...getLocalLinks(html, 'script'), ...getLocalLinks(html, 'link'));
+  srcLinks.push(...getLocalLinks(html, 'img'));
+  return html;
+};
+
+const writeStreams = (data, dirPath, ...links) => {
+  const allLinks = _.flatten(links);
+  return data.forEach((item, index) => {
+    const filePaths = getFilepaths(allLinks, dirPath);
+    item.data.pipe(fs.createWriteStream(filePaths[index]));
+  });
+};
+
+
 const pageLoad = (uri, destPath) => {
-  const fileName = `${urlToName(uri)}.html`;
+  const fileName = urlToNameWithExt(uri, '.html');
   const filePath = path.join(destPath, fileName);
 
-  const dirName = `${urlToName(uri)}_files`;
+  const dirName = urlToNameWithExt(uri, '_files');
   const dirPath = path.join(destPath, dirName);
-  const filePaths = [];
 
   const hrefLinks = [];
   const srcLinks = [];
-  const links = [];
-  const fullLinks = [];
 
   return axios.get(uri)
-    .then(({ data: html }) => {
-      hrefLinks.push(...getInitLinks(html, 'script'), ...getInitLinks(html, 'link'));
-      srcLinks.push(...getInitLinks(html, 'img'));
-      links.push(...hrefLinks, ...srcLinks);
-      fullLinks.push(...getFullLinks(links, uri));
-      filePaths.push(...getFileNames(links, dirPath));
-      return html;
-    })
-    .then((html) => {
-      const replacedHref = replaceLinks(html, hrefLinks, dirName, 'href');
-      const replacedAll = replaceLinks(replacedHref, srcLinks, dirName, 'src');
-      return replacedAll;
-    })
-    .then(html => fs.writeFile(filePath, html, 'utf8'))
-    .then(() => {
-      if (!fs.existsSync(dirPath)) {
-        return fs.mkdir(dirPath);
-      }
-      return 1;
-    })
-    .then(() => {
-      const options = { method: 'get', responseType: 'stream' };
-      const requests = fullLinks.map(value =>
-        // axios.get(value));
-        axios({ ...options, url: value }));
-      return Promise.all(requests);
-    })
-    .then(responses => responses.forEach((response, index) => {
-      response.data.pipe(fs.createWriteStream(filePaths[index]));
-    }))
-    .catch(e => console.log('\n\nOops! Some error here\n\n', e));
+    .then(({ data: html }) => getLinks(html, hrefLinks, srcLinks))
+    .then(html => replaceLinks(html, hrefLinks, srcLinks, dirName))
+    .then(html => writeFile(filePath, html))
+    .then(() => mkdir(dirPath))
+    .then(() => loadData(uri, hrefLinks, srcLinks))
+    .then(responses => writeStreams(responses, dirPath, hrefLinks, srcLinks))
+    .catch(e => console.log('Oops! Some error here\n\n', e));
 };
 
 export default pageLoad;
