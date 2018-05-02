@@ -11,6 +11,7 @@ const testUrl = 'http://test.com/test';
 const testData = 'test data';
 const destPath = '__tests__/__fixtures__';
 const pathToResultFile = '__tests__/__fixtures__/test-com-test.html';
+const pathToOutputDir = '__tests__/__fixtures__/test-com-test_files';
 
 
 axios.defaults.adapter = httpAdapter;
@@ -26,8 +27,8 @@ test('check for correct jest work', () => {
 });
 
 test('pageLoader test with --output', async () => {
-  expect.assertions(1);
   await fs.writeFile(pathToResultFile, '', 'utf8');
+  await fs.rmdir(pathToOutputDir);
   await pageLoad(testUrl, destPath);
   const expected = await fs.readFile(pathToResultFile, 'utf8');
   expect(expected).toBe(testData);
