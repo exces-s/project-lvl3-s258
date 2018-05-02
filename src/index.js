@@ -21,6 +21,16 @@ const urlToName = (uri) => {
   return fileName;
 };
 
+const getFileName = (link) => {
+  const parsed = path.parse(link);
+  const newPath = path.format({ ...parsed, base: null, ext: null });
+  return `${urlToName(newPath)}${parsed.ext}`;
+};
+
+const getFileNames = (links, dirPath) =>
+  links.map(item =>
+    path.join(dirPath, getFileName(item)));
+
 const getLinksByTag = (tag, html) => {
   const links = [];
   const $ = cheerio.load(html);
@@ -31,32 +41,31 @@ const getLinksByTag = (tag, html) => {
   return links.filter(v => v);
 };
 
-const getLinks = (body, uri) => {
-  const tags = ['img', 'script', 'link'];
-
-  const allTagsLinks = tags.reduce((acc, tag) =>
-    [...acc, ...getLinksByTag(tag, body)], []);
-
+const getInitLinks = (body, tag) => {
+  const allTagsLinks = getLinksByTag(tag, body);
   const rightLinks = allTagsLinks
     .filter((item) => {
       const parsed = url.parse(item);
       return parsed.protocol === null;
-    })
-    .map(item => url.resolve(uri, item));
-
+    });
   return rightLinks;
 };
 
-const getFileNames = (links, dirPath) =>
-  links.map((item) => {
-    const parsed = path.parse(item);
-    const newUrl = path.format({ ...parsed, base: null, ext: null });
-    return path.join(dirPath, `${urlToName(newUrl)}${parsed.ext}`);
+const getFullLinks = (links, uri) =>
+  links.map(item => url.resolve(uri, item));
+
+
+const replaceLinks = (html, links, dirName, attr) => {
+  const $ = cheerio.load(html);
+
+  links.forEach((item) => {
+    const newUrl = path.join(dirName, getFileName(item));
+    return $(`[${attr}="${item}"]`).each(function iter() {
+      $(this).attr(attr, newUrl);
+    });
   });
 
-const writeFile = (filePath, data) => {
-  fs.writeFile(filePath, data, 'utf8');
-  return Promise.resolve(data);
+  return $.html();
 };
 
 const pageLoad = (uri, destPath) => {
@@ -65,33 +74,45 @@ const pageLoad = (uri, destPath) => {
 
   const dirName = `${urlToName(uri)}_files`;
   const dirPath = path.join(destPath, dirName);
-
-  const links = [];
   const filePaths = [];
+
+  const hrefLinks = [];
+  const srcLinks = [];
+  const links = [];
+  const fullLinks = [];
 
   return axios.get(uri)
     .then(({ data: html }) => {
-      links.push(...getLinks(html, uri));
+      hrefLinks.push(...getInitLinks(html, 'script'), ...getInitLinks(html, 'link'));
+      srcLinks.push(...getInitLinks(html, 'img'));
+      links.push(...hrefLinks, ...srcLinks);
+      fullLinks.push(...getFullLinks(links, uri));
       filePaths.push(...getFileNames(links, dirPath));
       return html;
     })
-    .then(html => fs.writeFile(filePath, html, 'utf8'))
-    .then(() => fs.mkdir(dirPath))
-    .then(() => {
-      // const options = { method: 'get', responseType: 'stream' };
-      const loadData = links.map(value =>
-        axios.get(value));
-        // axios({ ...options, url: value }));
-      return Promise.all(loadData);
+    .then((html) => {
+      const replacedHref = replaceLinks(html, hrefLinks, dirName, 'href');
+      const replacedAll = replaceLinks(replacedHref, srcLinks, dirName, 'src');
+      return replacedAll;
     })
-    .then(loadData => loadData.forEach(({ data }, index) => {
-      const dataToWrite = data instanceof Object ?
-        JSON.stringify(data) : data;
-      writeFile(filePaths[index], dataToWrite);
+    .then(html => fs.writeFile(filePath, html, 'utf8'))
+    .then(() => {
+      if (!fs.existsSync(dirPath)) {
+        return fs.mkdir(dirPath);
+      }
+      return 1;
+    })
+    .then(() => {
+      const options = { method: 'get', responseType: 'stream' };
+      const requests = fullLinks.map(value =>
+        // axios.get(value));
+        axios({ ...options, url: value }));
+      return Promise.all(requests);
+    })
+    .then(responses => responses.forEach((response, index) => {
+      response.data.pipe(fs.createWriteStream(filePaths[index]));
     }))
-    .catch((e) => {
-      throw new Error('Oops! Some error here\n', e);
-    });
+    .catch(e => console.log('\n\nOops! Some error here\n\n', e));
 };
 
 export default pageLoad;
