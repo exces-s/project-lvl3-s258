@@ -120,7 +120,7 @@ const pageLoad = (uri, destPath) => {
       return html;
     })
     .then(html => replaceLinks(html, hrefLinks, srcLinks, dirName))
-    .then(html => writeFile(filePath, html))
+    .then(modHtml => writeFile(filePath, modHtml))
     .then(() => mkdir(dirPath))
     .then(() => loadData(uri, hrefLinks, srcLinks))
     .then(responses => writeData(responses, dirPath, hrefLinks, srcLinks))
