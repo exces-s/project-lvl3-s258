@@ -94,13 +94,7 @@ const loadData = (uri, ...links) => {
   return Promise.all(requests);
 };
 
-const getLinks = (html, hrefLinks, srcLinks) => {
-  hrefLinks.push(...getLocalLinks(html, 'script'), ...getLocalLinks(html, 'link'));
-  srcLinks.push(...getLocalLinks(html, 'img'));
-  return html;
-};
-
-const writeStreams = (data, dirPath, ...links) => {
+const writeData = (data, dirPath, ...links) => {
   const allLinks = _.flatten(links);
   return data.forEach((item, index) => {
     const filePaths = getFilepaths(allLinks, dirPath);
@@ -120,12 +114,16 @@ const pageLoad = (uri, destPath) => {
   const srcLinks = [];
 
   return axios.get(uri)
-    .then(({ data: html }) => getLinks(html, hrefLinks, srcLinks))
+    .then(({ data: html }) => {
+      hrefLinks.push(...getLocalLinks(html, 'script'), ...getLocalLinks(html, 'link'));
+      srcLinks.push(...getLocalLinks(html, 'img'));
+      return html;
+    })
     .then(html => replaceLinks(html, hrefLinks, srcLinks, dirName))
     .then(html => writeFile(filePath, html))
     .then(() => mkdir(dirPath))
     .then(() => loadData(uri, hrefLinks, srcLinks))
-    .then(responses => writeStreams(responses, dirPath, hrefLinks, srcLinks))
+    .then(responses => writeData(responses, dirPath, hrefLinks, srcLinks))
     .catch(e => console.log('Oops! Some error here\n\n', e));
 };
 
