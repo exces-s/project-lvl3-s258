@@ -13,10 +13,7 @@ const testData = '<html><head></head><body>test data</body></html>';
 const hostTest = 'http://test.com';
 const urlTest = 'http://test.com/test';
 
-const resultFileName = '/test-com-test.html';
-const outDirName = '/test-com-test_files';
-
-const pathToOutDirTest2 = '__tests__/__fixtures__';
+const fixturesPath = '__tests__/__fixtures__';
 
 const urlTest3 = 'https://github.com/';
 const resultFileNameTest3 = '/github-com.html';
@@ -35,8 +32,9 @@ test('Check for correct jest work', () => {
 
 test('1. Test with --output. Output directory doesn\'t exist ', async () => {
   const pathToOutDir = await fs.mkdtemp(`${os.tmpdir()}${path.sep}`);
-  const outDirPath = `${pathToOutDir}${outDirName}`;
-  const resultFilePath = `${pathToOutDir}${resultFileName}`;
+
+  const outDirPath = `${pathToOutDir}/test-com-test_files`;
+  const resultFilePath = `${pathToOutDir}/test-com-test.html`;
 
   await pageLoad(urlTest, pathToOutDir);
   const expectedData = await fs.readFile(resultFilePath, 'utf8');
@@ -45,24 +43,36 @@ test('1. Test with --output. Output directory doesn\'t exist ', async () => {
 });
 
 test('2. Test with --output. Output directory exists', async () => {
-  const outDirPath = `${pathToOutDirTest2}${outDirName}`;
-  const resultFilePath = `${pathToOutDirTest2}${resultFileName}`;
+  const outDirPath = '__tests__/__fixtures__/test-com-test_files';
+  const resultFilePath = '__tests__/__fixtures__/test-com-test.html';
 
-  await fs.writeFile(`${pathToOutDirTest2}${resultFileName}`, '', 'utf8');
+  await fs.writeFile(resultFilePath, '', 'utf8');
+  // const bar = await fs.readFile(resultFilePath, 'utf8');
+  // console.log(bar);
 
-  await pageLoad(urlTest, pathToOutDirTest2);
+  await pageLoad(urlTest, fixturesPath);
+
+  // const foo = await fs.readFile(resultFilePath, 'utf8');
+  // console.log(foo);
+
   const expectedData = await fs.readFile(resultFilePath, 'utf8');
-  expect(fs.existsSync(outDirPath)).toBeTruthy();
+  expect(await fs.existsSync(outDirPath)).toBeTruthy();
+  // console.log(expectedData);
   expect(expectedData).toBe(testData);
 });
 
 test('3. Test with --output. Loaded page is external page', async () => {
   const pathToOutDir = await fs.mkdtemp(`${os.tmpdir()}${path.sep}`);
-  const outDirPath = `${pathToOutDir}${resultFileNameTest3}`;
-  const resultFilePath = `${pathToOutDir}${outDirNameTest3}`;
+  const resultFilePath = `${pathToOutDir}${resultFileNameTest3}`;
+  const outDirPath = `${pathToOutDir}${outDirNameTest3}`;
+
+  const actualOpensearch = await fs.readFile(`${fixturesPath}/opensearch.xml`);
 
   await pageLoad(urlTest3, pathToOutDir);
+
+  const loadedOpensearch = await fs.readFile(`${outDirPath}/opensearch.xml`);
   expect(fs.existsSync(outDirPath)).toBeTruthy();
   expect(fs.existsSync(resultFilePath)).toBeTruthy();
+  expect(loadedOpensearch).toEqual(actualOpensearch);
 });
 
