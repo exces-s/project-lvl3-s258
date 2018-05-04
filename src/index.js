@@ -123,7 +123,6 @@ const loadData = (uri, links) => {
 const writeDataItem = (response, dirPath, filePath) =>
   response.data.pipe(fs.createWriteStream(filePath));
 
-
 const writeAllData = (data, dirPath, links) => {
   if (_.isEmpty(links)) {
     plDebug('no data to write');
@@ -141,6 +140,20 @@ const writeAllData = (data, dirPath, links) => {
   });
 };
 
+const getErrMessage = (err) => {
+  const { config, code, path: problemPath } = err;
+  if (code) {
+    const fullPath = path.resolve(problemPath);
+    return `${code} ERROR. No such file or directory. Check this path: ${fullPath}`;
+  }
+  return `NETWORK ERROR. Remote server error or network problems. Url: ${config.url}`;
+};
+
+const getHtml = response =>
+  (response.status === 200 ?
+    response.data :
+    Promise.reject(response));
+
 
 const pageLoad = (uri, destPath) => {
   plDebug('START %o', programName);
@@ -153,34 +166,33 @@ const pageLoad = (uri, destPath) => {
   const dirPath = path.join(destPath, dirName);
   plDebug('defined path to output dir: %o', dirPath);
 
-  let urls;
+  let linksObj = {};
 
   return mkdirIfNotExist(dirPath)
     .then(() => axios.get(uri))
-    .then(({ data: html }) => {
+    .then(response => getHtml(response))
+    .then((html) => {
       plDebug('html received');
-      const linksObj = getAllLinksInObj(html);
+      linksObj = { ...getAllLinksInObj(html) };
       const modHtml = replaceAllLinks(html, linksObj, dirName);
       plDebug('html changed, local links replaced');
-      fs.writeFile(filePath, modHtml, 'utf8');
-      plDebug('html-file create: %o', filePath);
-      return linksObj;
+      return fs.writeFile(filePath, modHtml, 'utf8');
     })
-    .then((linksObj) => {
-      const links = getLinksFromObj(linksObj);
-      const responses = loadData(uri, links);
-      plDebug(_.isEmpty(links) ?
+    .then(() => {
+      plDebug('html-file created: %o', filePath);
+      const urls = getLinksFromObj(linksObj);
+      const responses = loadData(uri, urls);
+      plDebug(_.isEmpty(urls) ?
         'no data to load' :
-        `all ${links.length} data items loaded`);
-      urls = [...links];
+        `all ${urls.length} data items loaded`);
       return responses;
     })
-    .then(responses =>
-      writeAllData(responses, dirPath, urls))
-    .catch((error) => {
-      console.error(error);
-      //  throw new Error('Oops! Some error here', e);
-    });
+    .then((responses) => {
+      const urls = getLinksFromObj(linksObj);
+      writeAllData(responses, dirPath, urls);
+      return 'Work is done';
+    })
+    .catch(error => getErrMessage(error));
 };
 
 export default pageLoad;
