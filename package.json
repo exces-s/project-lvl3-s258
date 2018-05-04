@@ -1,6 +1,6 @@
 {
   "name": "page-loader-lav",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "template for js projects",
   "bin": {
     "pageloader": "dist/bin/pageloader.js"
@@ -35,6 +35,7 @@
     "axios": "^0.18.0",
     "cheerio": "^1.0.0-rc.2",
     "commander": "^2.15.1",
+    "debug": "^3.1.0",
     "lodash": "^4.17.10",
     "mz": "^2.7.0",
     "nock": "^9.2.5"

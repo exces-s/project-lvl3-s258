@@ -18,3 +18,6 @@ test-coverage:
 
 build:
 	npm run build
+
+debug:
+	DEBUG=pa* npm test
