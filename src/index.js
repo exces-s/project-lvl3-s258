@@ -6,8 +6,8 @@ import cheerio from 'cheerio';
 import _ from 'lodash';
 import debug from 'debug';
 
-const plDebug = debug('page-loader');
 const programName = 'pageloader';
+const plDebug = debug(programName);
 
 const tags = ['img', 'link', 'script'];
 
@@ -72,7 +72,6 @@ const getLinksFromObj = (linksObj) => {
   return _.flatten(tagsList.map(tag => linksObj[tag]));
 };
 
-
 const getFullLinks = (links, uri) =>
   links.map(item => url.resolve(uri, item));
 
@@ -126,7 +125,7 @@ const writeDataItem = (response, dirPath, filePath) =>
 
 
 const writeAllData = (data, dirPath, links) => {
-  if (links.length === 0) {
+  if (_.isEmpty(links)) {
     plDebug('no data to write');
     plDebug('FINISH %o', programName);
     plDebug('...............................');
@@ -134,7 +133,7 @@ const writeAllData = (data, dirPath, links) => {
   return data.forEach((item, index) => {
     const filePaths = getFilepaths(links, dirPath);
     writeDataItem(item, dirPath, filePaths[index]);
-    if (filePaths[index] === _.last(filePaths)) {
+    if (_.isEqual(_.last(filePaths), filePaths[index])) {
       plDebug(`all ${filePaths.length} file(s) created: \n %O`, filePaths.join('; '));
       plDebug('FINISH %o', programName);
       plDebug('...............................');
@@ -170,7 +169,7 @@ const pageLoad = (uri, destPath) => {
     .then((linksObj) => {
       const links = getLinksFromObj(linksObj);
       const responses = loadData(uri, links);
-      plDebug(links.length === 0 ?
+      plDebug(_.isEmpty(links) ?
         'no data to load' :
         `all ${links.length} data items loaded`);
       urls = [...links];
@@ -178,9 +177,9 @@ const pageLoad = (uri, destPath) => {
     })
     .then(responses =>
       writeAllData(responses, dirPath, urls))
-    .catch((e) => {
-      console.log(e);
-      // throw new Error('Oops! Some error here', e);
+    .catch((error) => {
+      console.error(error);
+      //  throw new Error('Oops! Some error here', e);
     });
 };
 
