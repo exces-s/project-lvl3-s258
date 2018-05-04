@@ -166,21 +166,21 @@ const pageLoad = (uri, destPath) => {
   const dirPath = path.join(destPath, dirName);
   plDebug('defined path to output dir: %o', dirPath);
 
-  let linksObj = {};
+  let urls = [];
 
   return mkdirIfNotExist(dirPath)
     .then(() => axios.get(uri))
     .then(response => getHtml(response))
     .then((html) => {
       plDebug('html received');
-      linksObj = { ...getAllLinksInObj(html) };
+      const linksObj = { ...getAllLinksInObj(html) };
       const modHtml = replaceAllLinks(html, linksObj, dirName);
+      urls = getLinksFromObj(linksObj);
       plDebug('html changed, local links replaced');
       return fs.writeFile(filePath, modHtml, 'utf8');
     })
     .then(() => {
       plDebug('html-file created: %o', filePath);
-      const urls = getLinksFromObj(linksObj);
       const responses = loadData(uri, urls);
       plDebug(_.isEmpty(urls) ?
         'no data to load' :
@@ -188,7 +188,6 @@ const pageLoad = (uri, destPath) => {
       return responses;
     })
     .then((responses) => {
-      const urls = getLinksFromObj(linksObj);
       writeAllData(responses, dirPath, urls);
       return 'Work is done';
     })
