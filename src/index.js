@@ -4,6 +4,20 @@ import url from 'url';
 import path from 'path';
 import cheerio from 'cheerio';
 import _ from 'lodash';
+import debug from 'debug';
+
+const plDebug = debug('page-loader');
+const programName = 'pageloader';
+
+const tags = ['img', 'link', 'script'];
+
+const typeAttr = {
+  img: 'src',
+  link: 'href',
+  script: 'href',
+};
+
+const getAttr = tag => typeAttr[tag];
 
 
 const urlToNameWithoutExt = (uri) => {
@@ -32,30 +46,38 @@ const getFilepaths = (links, dirPath) =>
   links.map(item =>
     path.join(dirPath, urlToFilename(item)));
 
-const getLinksByTag = (tag, html) => {
-  const attr = tag === 'img' ? 'src' : 'href';
+const getLocalLinksByTag = (html, tag) => {
+  const attr = getAttr(tag);
   const links = [];
   const $ = cheerio.load(html);
   $(tag).each(function () {
     links.push($(this).attr(attr));
   });
 
-  return links.filter(v => v);
+  return links.filter(v => v)
+    .filter((item) => {
+      const data = url.parse(item);
+      return data.protocol === null;
+    });
 };
 
-const getLocalLinks = (body, tag) => {
-  const allTagsLinks = getLinksByTag(tag, body);
-  return allTagsLinks.filter((item) => {
-    const data = url.parse(item);
-    return data.protocol === null;
-  });
+const getAllLinksInObj = html =>
+  tags.reduce((acc, tag) => {
+    const obj = { [tag]: getLocalLinksByTag(html, tag) };
+    return { ...acc, ...obj };
+  }, {});
+
+const getLinksFromObj = (linksObj) => {
+  const tagsList = _.keys(linksObj);
+  return _.flatten(tagsList.map(tag => linksObj[tag]));
 };
+
 
 const getFullLinks = (links, uri) =>
   links.map(item => url.resolve(uri, item));
 
-
-const replaceLinksByAttr = (html, links, dirName, attr) => {
+const replaceLinksByTag = (html, links, tag, dirName) => {
+  const attr = getAttr(tag);
   const $ = cheerio.load(html);
 
   links.forEach((item) => {
@@ -68,63 +90,98 @@ const replaceLinksByAttr = (html, links, dirName, attr) => {
   return $.html();
 };
 
-const replaceLinks = (html, hrefLinks, srcLinks, dirName) => {
-  const replacedHref = replaceLinksByAttr(html, hrefLinks, dirName, 'href');
-  const replacedAll = replaceLinksByAttr(replacedHref, srcLinks, dirName, 'src');
+const replaceAllLinks = (html, linksObj, dirName) => {
+  let modHtml = html;
+  _.forIn(linksObj, (links, tag) => {
+    modHtml = replaceLinksByTag(modHtml, links, tag, dirName);
+  });
 
-  return replacedAll;
+  return modHtml;
 };
 
-const writeFile = (filePath, data) =>
-  fs.writeFile(filePath, data, 'utf8');
-
-const mkdir = (dirPath) => {
+const mkdirIfNotExist = (dirPath) => {
   if (!fs.existsSync(dirPath)) {
+    plDebug('creating output directory: %o', dirPath);
     return fs.mkdir(dirPath);
   }
+  plDebug('directory already exists');
   return Promise.resolve();
 };
 
-const loadData = (uri, ...links) => {
-  const allLinks = _.flatten(links);
+const loadDataItem = (link) => {
   const options = { method: 'get', responseType: 'stream' };
-  const fullLinks = getFullLinks(allLinks, uri);
-  const requests = fullLinks.map(value =>
-    axios({ ...options, url: value }));
-  return Promise.all(requests);
+  return axios({ ...options, url: link });
 };
 
-const writeData = (data, dirPath, ...links) => {
-  const allLinks = _.flatten(links);
+const loadData = (uri, links) => {
+  const fullLinks = getFullLinks(links, uri);
+  const responses = fullLinks.map(value =>
+    loadDataItem(value));
+
+  return Promise.all(responses);
+};
+
+const writeDataItem = (response, dirPath, filePath) =>
+  response.data.pipe(fs.createWriteStream(filePath));
+
+
+const writeAllData = (data, dirPath, links) => {
+  if (links.length === 0) {
+    plDebug('no data to write');
+    plDebug('FINISH %o', programName);
+    plDebug('...............................');
+  }
   return data.forEach((item, index) => {
-    const filePaths = getFilepaths(allLinks, dirPath);
-    item.data.pipe(fs.createWriteStream(filePaths[index]));
+    const filePaths = getFilepaths(links, dirPath);
+    writeDataItem(item, dirPath, filePaths[index]);
+    if (filePaths[index] === _.last(filePaths)) {
+      plDebug(`all ${filePaths.length} file(s) created: \n %O`, filePaths.join('; '));
+      plDebug('FINISH %o', programName);
+      plDebug('...............................');
+    }
   });
 };
 
 
 const pageLoad = (uri, destPath) => {
+  plDebug('START %o', programName);
+
   const fileName = urlToNameWithExt(uri, '.html');
   const filePath = path.join(destPath, fileName);
+  plDebug('defined path to html-file: %o', filePath);
 
   const dirName = urlToNameWithExt(uri, '_files');
   const dirPath = path.join(destPath, dirName);
+  plDebug('defined path to output dir: %o', dirPath);
 
-  const hrefLinks = [];
-  const srcLinks = [];
+  let urls;
 
-  return axios.get(uri)
+  return mkdirIfNotExist(dirPath)
+    .then(() => axios.get(uri))
     .then(({ data: html }) => {
-      hrefLinks.push(...getLocalLinks(html, 'script'), ...getLocalLinks(html, 'link'));
-      srcLinks.push(...getLocalLinks(html, 'img'));
-      return html;
+      plDebug('html received');
+      const linksObj = getAllLinksInObj(html);
+      const modHtml = replaceAllLinks(html, linksObj, dirName);
+      plDebug('html changed, local links replaced');
+      fs.writeFile(filePath, modHtml, 'utf8');
+      plDebug('html-file create: %o', filePath);
+      return linksObj;
     })
-    .then(html => replaceLinks(html, hrefLinks, srcLinks, dirName))
-    .then(modHtml => writeFile(filePath, modHtml))
-    .then(() => mkdir(dirPath))
-    .then(() => loadData(uri, hrefLinks, srcLinks))
-    .then(responses => writeData(responses, dirPath, hrefLinks, srcLinks))
-    .catch(e => console.log('Oops! Some error here\n\n', e));
+    .then((linksObj) => {
+      const links = getLinksFromObj(linksObj);
+      const responses = loadData(uri, links);
+      plDebug(links.length === 0 ?
+        'no data to load' :
+        `all ${links.length} data items loaded`);
+      urls = [...links];
+      return responses;
+    })
+    .then(responses =>
+      writeAllData(responses, dirPath, urls))
+    .catch((e) => {
+      console.log(e);
+      // throw new Error('Oops! Some error here', e);
+    });
 };
 
 export default pageLoad;
