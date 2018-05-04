@@ -88,7 +88,7 @@ test('4. Option: --output. Incorrect output directory path', async () => {
 });
 
 test('5. Option: --output. Incorrect url', async () => {
-  const errMessage = 'ENOENT ERROR. No such file or directory. Check this path: /home/exces-s/Projects/page-loader/__tests__/__fixtures__/incorrectPath/test-com-test_files';
+  const errMessage = `ENOENT ERROR. No such file or directory. Check this path: ${path.resolve('__tests__/__fixtures__/incorrectPath/test-com-test_files')}`;
   const result = await pageLoad('http://test.com/test', `${fixturesPath}/incorrectPath`);
   expect(result).toEqual(errMessage);
 });
