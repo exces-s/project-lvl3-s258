@@ -149,10 +149,12 @@ const getErrMessage = (err) => {
   return `NETWORK ERROR. Remote server error or network problems. Url: ${config.url}`;
 };
 
-const getHtml = response =>
-  (response.status === 200 ?
+const getHtml = (response) => {
+  plDebug('server responded');
+  return (response.status === 200 ?
     response.data :
     Promise.reject(response));
+};
 
 
 const pageLoad = (uri, destPath) => {
