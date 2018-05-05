@@ -7,88 +7,109 @@ import os from 'os';
 import pageLoad from '../src';
 import half from '../src/half';
 
-axios.defaults.adapter = httpAdapter;
 
-const testData = '<html><head></head><body>test data</body></html>';
+const testHtmlPath = '__tests__/__fixtures__/testHtml.html';
+const testHtmlWithLocalLinkPath = '__tests__/__fixtures__/testHtmlWithLocalLink.html';
+const modTestHtmlWithLocalLinkPath = '__tests__/__fixtures__/modTestHtmlWithLocalLink.html';
 
-const hostTest = 'http://test.com';
-const urlTest = 'http://test.com/test';
-
+const tempDirPath = fs.mkdtemp(`${os.tmpdir()}${path.sep}`);
 const fixturesPath = '__tests__/__fixtures__';
 
-const urlTest3 = 'https://github.com/';
-const resultFileNameTest3 = '/github-com.html';
-const outDirNameTest3 = '/github-com_files';
 
-beforeEach(() => nock(hostTest)
-  .get('/test')
-  .reply(200, testData));
+axios.defaults.adapter = httpAdapter;
 
-beforeEach(() => nock(hostTest)
-  .get('/404')
-  .reply(404, testData));
+beforeEach(async () => {
+  const htmlWithLocalLink = await fs.readFile(testHtmlWithLocalLinkPath, 'utf8');
+  const testHtml = await fs.readFile(testHtmlPath, 'utf8');
 
+  nock('http://test.com')
+    .get('/test')
+    .reply(200, testHtml);
 
-test('Check for correct jest work', () => {
+  nock('http://test.com')
+    .get('/404')
+    .reply(404, testHtml);
+
+  nock('https://google.com')
+    .get('/')
+    .reply(200, htmlWithLocalLink);
+});
+
+test('0. Check for correct jest work', () => {
   expect(half(6)).toBe(3);
 });
 
-test('1. Option: --output. Output directory doesn\'t exist ', async () => {
-  const pathToOutDir = await fs.mkdtemp(`${os.tmpdir()}${path.sep}`);
+
+test('1. Should create directory for local files and create html.file', async () => {
+  const url = 'http://test.com/test';
+  const pathToOutDir = await tempDirPath;
   const outDirFullPath = `${pathToOutDir}/test-com-test_files`;
-  const resultFilePath = `${pathToOutDir}/test-com-test.html`;
+  const htmltFilePath = `${pathToOutDir}/test-com-test.html`;
 
-  await pageLoad(urlTest, pathToOutDir);
+  await pageLoad(url, pathToOutDir);
 
   const isOutDirExist = fs.existsSync(outDirFullPath);
-  const expectedData = await fs.readFile(resultFilePath, 'utf8');
+  const actualHtml = await fs.readFile(testHtmlPath, 'utf8');
+  const expectedHtml = await fs.readFile(htmltFilePath, 'utf8');
 
-  expect(expectedData).toBe(testData);
+  expect(expectedHtml).toBe(actualHtml);
   expect(isOutDirExist).toBeTruthy();
 });
 
-test('2. Option: --output. Output directory exists', async () => {
-  const outDirFullPath = '__tests__/__fixtures__/test-com-test_files';
-  const resultFilePath = '__tests__/__fixtures__/test-com-test.html';
-  const isFileExist = fs.existsSync(resultFilePath);
+test('2. Should be no mistake if directory for local files exists', async () => {
+  const url = 'http://test.com/test';
+  const outDirFullPath = `${fixturesPath}/test-com-test_files`;
+  const htmltFilePath = `${fixturesPath}/test-com-test.html`;
+  const isHtmlFileExist = fs.existsSync(htmltFilePath);
 
-  if (isFileExist) {
-    await fs.unlink(resultFilePath);
+  if (isHtmlFileExist) {
+    await fs.unlink(htmltFilePath);
   }
-  await pageLoad(urlTest, fixturesPath);
+  await pageLoad(url, fixturesPath);
 
   const isOutDirExist = fs.existsSync(outDirFullPath);
-  const expectedData = await fs.readFile(resultFilePath, 'utf8');
-
   expect(isOutDirExist).toBeTruthy();
-  expect(expectedData).toBe(testData);
 });
 
-test('3. Option: --output. Loaded page is external page', async () => {
-  const pathToOutDir = await fs.mkdtemp(`${os.tmpdir()}${path.sep}`);
-  const resultFilePath = `${pathToOutDir}${resultFileNameTest3}`;
-  const outDirFullPath = `${pathToOutDir}${outDirNameTest3}`;
-  const actualOpensearch = await fs.readFile(`${fixturesPath}/opensearch.xml`);
-
-  await pageLoad(urlTest3, pathToOutDir);
-
-  const loadedOpensearch = await fs.readFile(`${outDirFullPath}/opensearch.xml`);
-  const isOutDirExist = fs.existsSync(outDirFullPath);
-  const isResultFileExist = fs.existsSync(resultFilePath);
-
-  expect(isOutDirExist).toBeTruthy();
-  expect(isResultFileExist).toBeTruthy();
-  expect(loadedOpensearch).toEqual(actualOpensearch);
-});
-
-test('4. Option: --output. Incorrect output directory path', async () => {
+test('3. Should display network error', async () => {
+  const url = 'http://test.com/404';
   const errMessage = 'NETWORK ERROR. Remote server error or network problems. Url: http://test.com/404';
-  const result = await pageLoad('http://test.com/404', `${fixturesPath}`);
+
+  const result = await pageLoad(url, `${fixturesPath}`);
+
   expect(result).toEqual(errMessage);
 });
 
-test('5. Option: --output. Incorrect url', async () => {
+test('4. Should display ENOENT error', async () => {
+  const url = 'http://test.com/test';
   const errMessage = `ENOENT ERROR. No such file or directory. Check this path: ${path.resolve('__tests__/__fixtures__/incorrectPath/test-com-test_files')}`;
-  const result = await pageLoad('http://test.com/test', `${fixturesPath}/incorrectPath`);
+
+  const result = await pageLoad(url, `${fixturesPath}/incorrectPath`);
+
   expect(result).toEqual(errMessage);
 });
+
+test('5. Should load local files from external page', async () => {
+  const url = 'https://github.com';
+  const pathToOutDir = await tempDirPath;
+  const outDirFullPath = `${pathToOutDir}/github-com_files`;
+
+  await pageLoad(url, pathToOutDir);
+
+  const actualOpensearchFile = await fs.readFile(`${fixturesPath}/opensearch.xml`);
+  const loadedOpensearchFile = await fs.readFile(`${outDirFullPath}/opensearch.xml`);
+  expect(loadedOpensearchFile).toEqual(actualOpensearchFile);
+});
+
+test('6. Should replace local link in html', async () => {
+  const url = 'https://google.com';
+  const pathToOutDir = await tempDirPath;
+  const htmltFilePath = `${pathToOutDir}/google-com.html`;
+
+  await pageLoad(url, pathToOutDir);
+
+  const actualHtml = await fs.readFile(modTestHtmlWithLocalLinkPath, 'utf8');
+  const expectedHtml = await fs.readFile(htmltFilePath, 'utf8');
+  expect(expectedHtml).toEqual(actualHtml);
+});
+
