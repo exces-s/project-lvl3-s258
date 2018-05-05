@@ -73,20 +73,20 @@ test('2. Should be no mistake if directory for local files exists', async () => 
 
 test('3. Should display network error', async () => {
   const url = 'http://test.com/404';
-  const errMessage = 'NETWORK ERROR. Remote server error or network problems. Url: http://test.com/404';
+  const errMessage = 'NETWORK ERROR. Remote server error or network problems';
 
-  const result = await pageLoad(url, `${fixturesPath}`);
+  const error = await pageLoad(url, `${fixturesPath}`);
 
-  expect(result).toEqual(errMessage);
+  expect(error.message).toEqual(errMessage);
 });
 
 test('4. Should display ENOENT error', async () => {
   const url = 'http://test.com/test';
-  const errMessage = `ENOENT ERROR. No such file or directory. Check this path: ${path.resolve('__tests__/__fixtures__/incorrectPath/test-com-test_files')}`;
+  const errMessage = 'ENOENT ERROR. No such file or directory. Check if destination path exists';
 
-  const result = await pageLoad(url, `${fixturesPath}/incorrectPath`);
+  const error = await pageLoad(url, `${fixturesPath}/incorrectPath`);
 
-  expect(result).toEqual(errMessage);
+  expect(error.message).toEqual(errMessage);
 });
 
 test('5. Should load local files from external page', async () => {
