@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import commander from 'commander';
 import pageLoad from '..';
 import { version } from '../../package.json';
@@ -12,7 +13,7 @@ commander
   .action(url => pageLoad(url, commander.output)
     .then(result => console.log(result))
     .catch((err) => {
-      console.log(err);
+      console.log(err.message);
       process.exit(1);
     }))
   .parse(process.argv);

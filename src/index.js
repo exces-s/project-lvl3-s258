@@ -5,9 +5,10 @@ import path from 'path';
 import cheerio from 'cheerio';
 import _ from 'lodash';
 import debug from 'debug';
+import Listr from 'listr';
 
 const programName = 'pageloader';
-const plDebug = debug(programName);
+const debugLog = debug(programName);
 
 const tags = ['img', 'link', 'script'];
 
@@ -19,6 +20,8 @@ const typeAttr = {
 
 const getAttr = tag => typeAttr[tag];
 
+const getFullLink = (link, uri) =>
+  url.resolve(uri, link);
 
 const urlToNameWithoutExt = (uri) => {
   const data = url.parse(uri);
@@ -42,9 +45,9 @@ const urlToFilename = (link) => {
   return urlToNameWithExt(newPath, data.ext);
 };
 
-const getFilepaths = (links, dirPath) =>
-  links.map(item =>
-    path.join(dirPath, urlToFilename(item)));
+const getFilepath = (link, dirPath) =>
+  path.join(dirPath, urlToFilename(link));
+
 
 const getLocalLinksByTag = (html, tag) => {
   const attr = getAttr(tag);
@@ -61,6 +64,45 @@ const getLocalLinksByTag = (html, tag) => {
     });
 };
 
+const writeDataFile = (response, filePath) =>
+  response.data.pipe(fs.createWriteStream(filePath));
+
+
+const isStatus200 = response => response.status === 200;
+
+const getResponseWithData = (link) => {
+  const options = { method: 'get', responseType: 'stream' };
+  return axios({ ...options, url: link });
+};
+
+const createTaskConfig = (link, uri, dirPath) => {
+  const fullLink = getFullLink(link, uri);
+  const filePath = getFilepath(link, dirPath);
+
+  const taskFn = (ctx, task) => getResponseWithData(fullLink)
+    .then(responce => writeDataFile(responce, filePath))
+    .then(() => Promise.resolve())
+    .catch(err => task.skip(err.message));
+
+  return { title: fullLink, task: taskFn };
+};
+
+const createTasksConfig = (titles, uri, dirPath) =>
+  titles.reduce((acc, item) => {
+    const taskOption = createTaskConfig(item, uri, dirPath);
+    return [...acc, taskOption];
+  }, []);
+
+const getAndWriteAllData = (uri, links, dirPath) => {
+  if (_.isEmpty(links)) {
+    debugLog('no data to load');
+    return Promise.resolve();
+  }
+  const tasksConfig = createTasksConfig(links, uri, dirPath);
+  const tasks = new Listr(tasksConfig);
+  return tasks.run();
+};
+
 const getAllLinksInObj = html =>
   tags.reduce((acc, tag) => {
     const obj = { [tag]: getLocalLinksByTag(html, tag) };
@@ -71,9 +113,6 @@ const getLinksFromObj = (linksObj) => {
   const tagsList = _.keys(linksObj);
   return _.flatten(tagsList.map(tag => linksObj[tag]));
 };
-
-const getFullLinks = (links, uri) =>
-  links.map(item => url.resolve(uri, item));
 
 const replaceLinksByTag = (html, links, tag, dirName) => {
   const attr = getAttr(tag);
@@ -98,102 +137,70 @@ const replaceAllLinks = (html, linksObj, dirName) => {
   return modHtml;
 };
 
+const getHtml = response => response.data;
+
 const mkdirIfNotExist = (dirPath) => {
   if (!fs.existsSync(dirPath)) {
-    plDebug('creating output directory: %o', dirPath);
+    debugLog('creating output directory: %o', dirPath);
     return fs.mkdir(dirPath);
   }
-  plDebug('directory already exists');
+  debugLog('directory already exists');
   return Promise.resolve();
 };
 
-const loadDataItem = (link) => {
-  const options = { method: 'get', responseType: 'stream' };
-  return axios({ ...options, url: link });
+const messageByErrCode = {
+  ENOENT: 'ENOENT ERROR. No such file or directory. Check if destination path exists',
+  ECONNREFUSED: 'NETWORK ERROR. Connect refused by server',
+  undefined: 'NETWORK ERROR. Remote server error or network problems',
 };
 
-const loadData = (uri, links) => {
-  const fullLinks = getFullLinks(links, uri);
-  const responses = fullLinks.map(value =>
-    loadDataItem(value));
-
-  return Promise.all(responses);
-};
-
-const writeDataItem = (response, dirPath, filePath) =>
-  response.data.pipe(fs.createWriteStream(filePath));
-
-const writeAllData = (data, dirPath, links) => {
-  if (_.isEmpty(links)) {
-    plDebug('no data to write');
-    plDebug('FINISH %o', programName);
-    plDebug('...............................');
-  }
-  return data.forEach((item, index) => {
-    const filePaths = getFilepaths(links, dirPath);
-    writeDataItem(item, dirPath, filePaths[index]);
-    if (_.isEqual(_.last(filePaths), filePaths[index])) {
-      plDebug(`all ${filePaths.length} file(s) created: \n %O`, filePaths.join('; '));
-      plDebug('FINISH %o', programName);
-      plDebug('...............................');
-    }
-  });
-};
+const getMessageByErrCode = errCode => messageByErrCode[errCode];
 
 const getErrMessage = (err) => {
-  const { config, code, path: problemPath } = err;
-  if (code) {
-    const fullPath = path.resolve(problemPath);
-    return `${code} ERROR. No such file or directory. Check this path: ${fullPath}`;
-  }
-  return `NETWORK ERROR. Remote server error or network problems. Url: ${config.url}`;
+  const { code } = err;
+  const errMessage = getMessageByErrCode(code);
+  return errMessage;
 };
-
-const getHtml = (response) => {
-  plDebug('server responded');
-  return (response.status === 200 ?
-    response.data :
-    Promise.reject(response));
-};
-
 
 const pageLoad = (uri, destPath) => {
-  plDebug('START %o', programName);
+  debugLog('START %o', programName);
 
   const fileName = urlToNameWithExt(uri, '.html');
   const filePath = path.join(destPath, fileName);
-  plDebug('defined path to html-file: %o', filePath);
+  debugLog('defined path to html-file: %o', filePath);
 
   const dirName = urlToNameWithExt(uri, '_files');
   const dirPath = path.join(destPath, dirName);
-  plDebug('defined path to output dir: %o', dirPath);
+  debugLog('defined path to output dir: %o', dirPath);
 
   let urls = [];
 
   return mkdirIfNotExist(dirPath)
     .then(() => axios.get(uri))
+    .then((response) => {
+      debugLog('server responded');
+      return isStatus200 ?
+        response :
+        Promise.reject(response);
+    })
     .then(response => getHtml(response))
     .then((html) => {
-      plDebug('html received');
+      debugLog('html received');
       const linksObj = { ...getAllLinksInObj(html) };
       const modHtml = replaceAllLinks(html, linksObj, dirName);
       urls = getLinksFromObj(linksObj);
-      plDebug('html changed, local links replaced');
+      debugLog('html changed, local links replaced');
       return fs.writeFile(filePath, modHtml, 'utf8');
     })
     .then(() => {
-      plDebug('html-file created: %o', filePath);
-      const responses = loadData(uri, urls);
-      plDebug(_.isEmpty(urls) ?
-        'no data to load' :
-        `all ${urls.length} data items loaded`);
-      return responses;
+      debugLog('html-file created: %o', filePath);
+      return getAndWriteAllData(uri, urls, dirPath);
     })
-    .then((responses) => {
-      writeAllData(responses, dirPath, urls);
-      return 'Work is done';
-    })
-    .catch(error => getErrMessage(error));
+    .then(() => `\nPage was downloaded to ${destPath} as ${fileName}`)
+    .catch((error) => {
+      const errMessage = getErrMessage(error);
+      return new Error(errMessage);
+    });
 };
 
 export default pageLoad;
