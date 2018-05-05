@@ -20,8 +20,20 @@ const typeAttr = {
 
 const getAttr = tag => typeAttr[tag];
 
-const getFullLink = (link, uri) =>
-  url.resolve(uri, link);
+const messageByErrCode = {
+  ENOENT: 'ENOENT ERROR. No such file or directory. Check if destination path exists',
+  ECONNREFUSED: 'NETWORK ERROR. Connect refused by server',
+  undefined: 'NETWORK ERROR. Remote server error or network problems',
+};
+
+const getMessageByErrCode = errCode => messageByErrCode[errCode];
+
+const getErrMessage = (err) => {
+  const { code } = err;
+  const errMessage = getMessageByErrCode(code);
+  return errMessage;
+};
+
 
 const urlToNameWithoutExt = (uri) => {
   const data = url.parse(uri);
@@ -45,9 +57,9 @@ const urlToFilename = (link) => {
   return urlToNameWithExt(newPath, data.ext);
 };
 
+
 const getFilepath = (link, dirPath) =>
   path.join(dirPath, urlToFilename(link));
-
 
 const getLocalLinksByTag = (html, tag) => {
   const attr = getAttr(tag);
@@ -64,11 +76,57 @@ const getLocalLinksByTag = (html, tag) => {
     });
 };
 
+const addAllLinksToObj = html =>
+  tags.reduce((acc, tag) => {
+    const obj = { [tag]: getLocalLinksByTag(html, tag) };
+    return { ...acc, ...obj };
+  }, {});
+
+const getLinksFromObj = (linksObj) => {
+  const tagsList = _.keys(linksObj);
+  return _.flatten(tagsList.map(tag => linksObj[tag]));
+};
+
+const getFullLink = (link, uri) =>
+  url.resolve(uri, link);
+
+
+const replaceLinksByTag = (html, links, tag, dirName) => {
+  const attr = getAttr(tag);
+  const $ = cheerio.load(html);
+
+  links.forEach((item) => {
+    const newUrl = path.join(dirName, urlToFilename(item));
+    return $(`[${attr}="${item}"]`).each(function iter() {
+      $(this).attr(attr, newUrl);
+    });
+  });
+
+  return $.html();
+};
+
+const replaceAllLinks = (html, linksObj, dirName) => {
+  let modHtml = html;
+  _.forIn(linksObj, (links, tag) => {
+    modHtml = replaceLinksByTag(modHtml, links, tag, dirName);
+  });
+
+  return modHtml;
+};
+
+
+const mkdirIfNotExist = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    debugLog('creating output directory: %o', dirPath);
+    return fs.mkdir(dirPath);
+  }
+  debugLog('directory already exists');
+  return Promise.resolve();
+};
+
+
 const writeDataFile = (response, filePath) =>
   response.data.pipe(fs.createWriteStream(filePath));
-
-
-const isStatus200 = response => response.status === 200;
 
 const getResponseWithData = (link) => {
   const options = { method: 'get', responseType: 'stream' };
@@ -103,66 +161,12 @@ const getAndWriteAllData = (uri, links, dirPath) => {
   return tasks.run();
 };
 
-const getAllLinksInObj = html =>
-  tags.reduce((acc, tag) => {
-    const obj = { [tag]: getLocalLinksByTag(html, tag) };
-    return { ...acc, ...obj };
-  }, {});
-
-const getLinksFromObj = (linksObj) => {
-  const tagsList = _.keys(linksObj);
-  return _.flatten(tagsList.map(tag => linksObj[tag]));
-};
-
-const replaceLinksByTag = (html, links, tag, dirName) => {
-  const attr = getAttr(tag);
-  const $ = cheerio.load(html);
-
-  links.forEach((item) => {
-    const newUrl = path.join(dirName, urlToFilename(item));
-    return $(`[${attr}="${item}"]`).each(function iter() {
-      $(this).attr(attr, newUrl);
-    });
-  });
-
-  return $.html();
-};
-
-const replaceAllLinks = (html, linksObj, dirName) => {
-  let modHtml = html;
-  _.forIn(linksObj, (links, tag) => {
-    modHtml = replaceLinksByTag(modHtml, links, tag, dirName);
-  });
-
-  return modHtml;
-};
-
 const getHtml = response => response.data;
 
-const mkdirIfNotExist = (dirPath) => {
-  if (!fs.existsSync(dirPath)) {
-    debugLog('creating output directory: %o', dirPath);
-    return fs.mkdir(dirPath);
-  }
-  debugLog('directory already exists');
-  return Promise.resolve();
-};
+const isStatus200 = response => response.status === 200;
 
-const messageByErrCode = {
-  ENOENT: 'ENOENT ERROR. No such file or directory. Check if destination path exists',
-  ECONNREFUSED: 'NETWORK ERROR. Connect refused by server',
-  undefined: 'NETWORK ERROR. Remote server error or network problems',
-};
 
-const getMessageByErrCode = errCode => messageByErrCode[errCode];
-
-const getErrMessage = (err) => {
-  const { code } = err;
-  const errMessage = getMessageByErrCode(code);
-  return errMessage;
-};
-
-const pageLoad = (uri, destPath) => {
+export default (uri, destPath) => {
   debugLog('START %o', programName);
 
   const fileName = urlToNameWithExt(uri, '.html');
@@ -186,7 +190,7 @@ const pageLoad = (uri, destPath) => {
     .then(response => getHtml(response))
     .then((html) => {
       debugLog('html received');
-      const linksObj = { ...getAllLinksInObj(html) };
+      const linksObj = { ...addAllLinksToObj(html) };
       const modHtml = replaceAllLinks(html, linksObj, dirName);
       urls = getLinksFromObj(linksObj);
       debugLog('html changed, local links replaced');
@@ -202,5 +206,3 @@ const pageLoad = (uri, destPath) => {
       return new Error(errMessage);
     });
 };
-
-export default pageLoad;
