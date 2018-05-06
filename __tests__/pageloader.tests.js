@@ -48,7 +48,7 @@ test('1. Should create directory for local files and create html.file', async ()
 
   await pageLoad(url, pathToOutDir);
 
-  const isOutDirExist = fs.existsSync(outDirFullPath);
+  const isOutDirExist = await fs.stat(outDirFullPath);
   const actualHtml = await fs.readFile(testHtmlPath, 'utf8');
   const expectedHtml = await fs.readFile(htmltFilePath, 'utf8');
 
@@ -60,14 +60,14 @@ test('2. Should be no mistake if directory for local files exists', async () => 
   const url = 'http://test.com/test';
   const outDirFullPath = `${fixturesPath}/test-com-test_files`;
   const htmltFilePath = `${fixturesPath}/test-com-test.html`;
-  const isHtmlFileExist = fs.existsSync(htmltFilePath);
+  const isHtmlFileExist = fs.stat(htmltFilePath);
 
   if (isHtmlFileExist) {
     await fs.unlink(htmltFilePath);
   }
   await pageLoad(url, fixturesPath);
 
-  const isOutDirExist = fs.existsSync(outDirFullPath);
+  const isOutDirExist = fs.stat(outDirFullPath);
   expect(isOutDirExist).toBeTruthy();
 });
 
@@ -75,18 +75,22 @@ test('3. Should display network error', async () => {
   const url = 'http://test.com/404';
   const errMessage = 'NETWORK ERROR. Remote server error or network problems';
 
-  const error = await pageLoad(url, `${fixturesPath}`);
-
-  expect(error.message).toEqual(errMessage);
+  try {
+    await pageLoad(url, `${fixturesPath}/`);
+  } catch (err) {
+    expect(err.message).toEqual(errMessage);
+  }
 });
 
 test('4. Should display ENOENT error', async () => {
   const url = 'http://test.com/test';
   const errMessage = 'ENOENT ERROR. No such file or directory. Check if destination path exists';
 
-  const error = await pageLoad(url, `${fixturesPath}/incorrectPath`);
-
-  expect(error.message).toEqual(errMessage);
+  try {
+    await pageLoad(url, `${fixturesPath}/incorrectPath`);
+  } catch (err) {
+    expect(err.message).toEqual(errMessage);
+  }
 });
 
 test('5. Should load local files from external page', async () => {

@@ -20,20 +20,22 @@ const typeAttr = {
 
 const getAttr = tag => typeAttr[tag];
 
-const messageByErrCode = {
-  ENOENT: 'ENOENT ERROR. No such file or directory. Check if destination path exists',
-  ECONNREFUSED: 'NETWORK ERROR. Connect refused by server',
-  undefined: 'NETWORK ERROR. Remote server error or network problems',
+const getMessageByErrCode = (errCode) => {
+  switch (errCode) {
+    case 'ENOENT':
+      return 'ENOENT ERROR. No such file or directory. Check if destination path exists';
+    case 'ECONNREFUSED':
+      return 'NETWORK ERROR. Connect refused by server';
+    default:
+      return 'NETWORK ERROR. Remote server error or network problems';
+  }
 };
-
-const getMessageByErrCode = errCode => messageByErrCode[errCode];
 
 const getErrMessage = (err) => {
   const { code } = err;
   const errMessage = getMessageByErrCode(code);
   return errMessage;
 };
-
 
 const urlToNameWithoutExt = (uri) => {
   const data = url.parse(uri);
@@ -203,6 +205,6 @@ export default (uri, destPath) => {
     .then(() => `\nPage was downloaded to ${destPath} as ${fileName}`)
     .catch((error) => {
       const errMessage = getErrMessage(error);
-      return new Error(errMessage);
+      throw new Error(errMessage);
     });
 };

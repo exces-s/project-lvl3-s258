@@ -12,8 +12,8 @@ commander
   .option('-o, --output [path]', 'Output path', '.')
   .action(url => pageLoad(url, commander.output)
     .then(result => console.log(result))
-    .catch((err) => {
-      console.log(err.message);
+    .catch(async (err) => {
+      console.log(err);
       process.exit(1);
     }))
   .parse(process.argv);
