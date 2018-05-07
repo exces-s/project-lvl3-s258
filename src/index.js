@@ -20,15 +20,16 @@ const typeAttr = {
 
 const getAttr = tag => typeAttr[tag];
 
+const errMessages = {
+  ENOENT: 'ENOENT ERROR. No such file or directory. Check if destination path exists',
+  ECONNREFUSED: 'NETWORK ERROR. Connect refused by server',
+};
+
 const getMessageByErrCode = (errCode) => {
-  switch (errCode) {
-    case 'ENOENT':
-      return 'ENOENT ERROR. No such file or directory. Check if destination path exists';
-    case 'ECONNREFUSED':
-      return 'NETWORK ERROR. Connect refused by server';
-    default:
-      return 'NETWORK ERROR. Remote server error or network problems';
+  if (!errCode) {
+    return 'NETWORK ERROR. Remote server error or network problems';
   }
+  return errMessages[errCode];
 };
 
 const getErrMessage = (err) => {
