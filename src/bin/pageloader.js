@@ -10,10 +10,13 @@ commander
   .description('Download the page from web to specified folder(to the program\'s start directory by default)')
   .arguments('<url>')
   .option('-o, --output [path]', 'Output path', '.')
-  .action(url => pageLoad(url, commander.output)
-    .then(result => console.log(result))
-    .catch(async (err) => {
-      console.log(err);
-      process.exit(1);
-    }))
+  .action(async (url) => {
+    try {
+      const result = await pageLoad(url, commander.output);
+      return console.log(result);
+    } catch (error) {
+      console.log(error.message);
+      return process.exit(1);
+    }
+  })
   .parse(process.argv);

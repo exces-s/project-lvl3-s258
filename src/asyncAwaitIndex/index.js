@@ -119,10 +119,11 @@ const replaceAllLinks = (html, linksObj, dirName) => {
 };
 
 
-const mkdirIfNotExist = (dirPath) => {
+const mkdirIfNotExist = async (dirPath) => {
   if (!fs.existsSync(dirPath)) {
     debugLog('creating output directory: %o', dirPath);
-    return fs.mkdir(dirPath);
+    const result = await fs.mkdir(dirPath);
+    return result;
   }
   debugLog('directory already exists');
   return Promise.resolve();
@@ -170,43 +171,37 @@ const getHtml = response => response.data;
 const isStatus200 = response => response.status === 200;
 
 
-export default (uri, destPath) => {
+export default async (uri, destPath) => {
   debugLog('START %o', programName);
-
   const fileName = urlToNameWithExt(uri, '.html');
   const filePath = path.join(destPath, fileName);
   debugLog('defined path to html-file: %o', filePath);
-
   const dirName = urlToNameWithExt(uri, '_files');
   const dirPath = path.join(destPath, dirName);
   debugLog('defined path to output dir: %o', dirPath);
 
-  let urls = [];
+  try {
+    await mkdirIfNotExist(dirPath);
+    const response = await axios.get(uri);
+    debugLog('server responded');
 
-  return mkdirIfNotExist(dirPath)
-    .then(() => axios.get(uri))
-    .then((response) => {
-      debugLog('server responded');
-      return isStatus200 ?
-        response :
-        Promise.reject(response);
-    })
-    .then(response => getHtml(response))
-    .then((html) => {
-      debugLog('html received');
-      const linksObj = { ...addAllLinksToObj(html) };
-      const modHtml = replaceAllLinks(html, linksObj, dirName);
-      urls = getLinksFromObj(linksObj);
-      debugLog('html changed, local links replaced');
-      return fs.writeFile(filePath, modHtml, 'utf8');
-    })
-    .then(() => {
-      debugLog('html-file created: %o', filePath);
-      return getAndWriteAllData(uri, urls, dirPath);
-    })
-    .then(() => `\nPage was downloaded to ${destPath} as ${fileName}`)
-    .catch((error) => {
-      const errMessage = getErrMessage(error);
-      throw new Error(errMessage);
-    });
+    if (!isStatus200(response)) {
+      return Promise.reject(response);
+    }
+
+    const html = getHtml(response);
+    debugLog('html received');
+    const linksObj = { ...addAllLinksToObj(html) };
+    const modHtml = replaceAllLinks(html, linksObj, dirName);
+    const urls = getLinksFromObj(linksObj);
+    debugLog('html changed, local links replaced');
+    await fs.writeFile(filePath, modHtml, 'utf8');
+    debugLog('html-file created: %o', filePath);
+    await getAndWriteAllData(uri, urls, dirPath);
+  } catch (err) {
+    const errMessage = getErrMessage(err);
+    throw new Error(errMessage);
+  }
+
+  return `\nPage was downloaded to ${destPath} as ${fileName}`;
 };
