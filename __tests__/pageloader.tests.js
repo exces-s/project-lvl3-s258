@@ -73,24 +73,16 @@ test('2. Should be no mistake if directory for local files exists', async () => 
 
 test('3. Should display network error', async () => {
   const url = 'http://test.com/404';
-  const errMessage = 'NETWORK ERROR. Remote server error or network problems';
 
-  try {
-    await pageLoad(url, `${fixturesPath}/`);
-  } catch (err) {
-    expect(err.message).toEqual(errMessage);
-  }
+  const pageloadNetErr = pageLoad(url, `${fixturesPath}/`);
+  await expect(pageloadNetErr).rejects.toThrowErrorMatchingSnapshot();
 });
 
 test('4. Should display ENOENT error', async () => {
   const url = 'http://test.com/test';
-  const errMessage = 'ENOENT ERROR. No such file or directory. Check if destination path exists';
 
-  try {
-    await pageLoad(url, `${fixturesPath}/incorrectPath`);
-  } catch (err) {
-    expect(err.message).toEqual(errMessage);
-  }
+  const pageloadEnoentErr = pageLoad(url, `${fixturesPath}/incorrectPath`);
+  await expect(pageloadEnoentErr).rejects.toThrowErrorMatchingSnapshot();
 });
 
 test('5. Should load local files from external page', async () => {

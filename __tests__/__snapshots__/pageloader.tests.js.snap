@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`3. Should display network error 1`] = `"NETWORK ERROR. Remote server error or network problems"`;
+
+exports[`4. Should display ENOENT error 1`] = `"ENOENT ERROR. No such file or directory. Check if destination path exists"`;
