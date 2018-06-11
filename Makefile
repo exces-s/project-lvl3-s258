@@ -2,7 +2,7 @@ install:
 	npm install
 
 start:
-	npm run babel-node -- src/bin/pageloader.js
+	npm run babel-node -- src/bin/rssReader.js
 
 lint:
 	npm run eslint .
@@ -18,12 +18,4 @@ test-coverage:
 
 build:
 	npm run build
-
-debug:
-	DEBUG=pa* npm test
-
-bnode:
-	npm run babel-node
-
-q:
-	DEBUG=pa* npm run babel-node -- src/bin/pageloader.js https://github.com/ --output __tests__/__fixtures__/
+	
