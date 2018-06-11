@@ -1,7 +1,7 @@
 {
-  "name": "rss-reader-lav",
-  "version": "0.1.0",
-  "description": "primitive rss reader",
+  "name": "webpack-package",
+  "version": "0.0.1",
+  "description": "",
   "scripts": {
     "webpack-serve": "webpack-serve",
     "test": "jest",
@@ -14,14 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/exces-s/project-lvl3-s258.git"
+    "url": "git+https://github.com/hexlet-boilerplates/webpack-package.git"
   },
-  "author": "Lebedev Artem",
+  "author": "Kirill Mokevnin",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/exces-s/project-lvl3-s258/issues"
+    "url": "https://github.com/hexlet-boilerplates/webpack-package/issues"
   },
-  "homepage": "https://github.com/exces-s/project-lvl3-s258#readme",
+  "homepage": "https://github.com/hexlet-boilerplates/webpack-package#readme",
+  "dependencies": {},
   "devDependencies": {
     "babel-eslint": "^8.2.3",
     "babel-jest": "^22.4.3",
@@ -44,11 +45,5 @@
     "webpack": "^4.7.0",
     "webpack-cli": "^2.1.2",
     "webpack-serve": "^0.2.0"
-  },
-  "dependencies": {
-    "bootstrap": "^4.1.1",
-    "jquery": "^3.3.1",
-    "lodash": "^4.17.10",
-    "popper.js": "^1.14.3"
   }
 }

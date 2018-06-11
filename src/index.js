@@ -1,1 +1,3 @@
-export default () => 'All Is OK';
+import init from './init';
+
+init();
