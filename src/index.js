@@ -17,7 +17,3 @@ const rssAddForm = `
 `;
 
 root.innerHTML = rssAddForm;
-
-const rssFeddValidate = (rssFeed) => {
-
-}
