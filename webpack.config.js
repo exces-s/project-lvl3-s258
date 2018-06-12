@@ -23,6 +23,7 @@ module.exports = {
       template: './src/template.html',
     }),
   ],
+  devtool: 'source-map',
 };
 
 
