@@ -76,7 +76,6 @@ const createRssFeedElement = (rssUri) => {
       <li class="list-group-item">${title}</li>
     </ul>
   `;
-  console.log('rssFeedElement', rssFeedElement.outerHTML);
   return rssFeedElement;
 };
 
@@ -156,8 +155,9 @@ const displayAlert = (message) => {
 };
 
 const closeAlerts = () => {
-  const messageRoot = document.querySelector('.needs-validation');
-  messageRoot.textContent = '';
+  const messageElement = document.querySelector('.needs-validation div.alert');
+  const messageParent = messageElement.parentElement;
+  messageParent.removeChild(messageElement);
 };
 
 rssAddForm.addEventListener('submit', (e) => {
