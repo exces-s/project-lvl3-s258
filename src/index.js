@@ -148,12 +148,16 @@ const alertMessages = {
   `,
 };
 
-
 const displayAlert = (message) => {
   const messageRoot = document.querySelector('.needs-validation');
   const messageDiv = document.createElement('div');
   messageDiv.innerHTML = alertMessages[message];
   messageRoot.append(messageDiv);
+};
+
+const closeAlerts = () => {
+  const messageRoot = document.querySelector('.needs-validation');
+  messageRoot.textContent = '';
 };
 
 rssAddForm.addEventListener('submit', (e) => {
@@ -184,6 +188,7 @@ rssAddForm.addEventListener('submit', (e) => {
         renderRssFeedsListHtml(rssFeedsListRoot);
       })
       .then(() => {
+        closeAlerts();
         displayAlert('access');
         input.value = '';
       })
