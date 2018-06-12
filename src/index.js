@@ -1,19 +1,41 @@
 import 'bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import init from './init';
+import validator from 'validator';
+// import url from 'url';
+// import _ from 'lodash';
+// import init from './init';
 
-init();
+// init();
 
-const root = document.getElementById('point');
-const rssAddForm = `
-<main role="main" class="container">
-  <div class="jumbotron">
-    <form>
-      <input class="form-control form-control-sm" type="text" placeholder="Add RSS-feed">
-      <button type="button" class="btn btn-primary btn-sm">Add</button>
-    </form>
-  </div>
-</main>
-`;
+const root = document.querySelector('.jumbotron');
+const rssAddForm = root.querySelector('form');
+const input = rssAddForm.querySelector('input');
 
-root.innerHTML = rssAddForm;
+let rssUrl = '';
+
+const isRssUrlValidate = (rssUri) => {
+  if (!validator.isURL(rssUri)) {
+    return false;
+  }
+  // const parsedUrl = url.parse(rssUri);
+  return true;
+};
+
+const validateInput = (rssUri, inputElement) => {
+  if (isRssUrlValidate(rssUri)) {
+    inputElement.classList.remove('is-invalid');
+    inputElement.classList.add('is-valid');
+  } else {
+    inputElement.classList.remove('is-valid');
+    inputElement.classList.add('is-invalid');
+  }
+};
+
+rssAddForm.addEventListener('input', (e) => {
+  rssUrl = e.target.value;
+  validateInput(rssUrl, input);
+});
+
+// rssAddForm.addEventListener('submit', (e) => {
+//   e.preventDefault();
+// });
