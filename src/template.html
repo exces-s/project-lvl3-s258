@@ -1,35 +1,62 @@
 <!doctype html>
 <html>
-  <head>
+
+<head>
     <title>RSS Reader</title>
-  </head>
-  <body>
+</head>
+
+<body>
     <div class="jumbotron">
-      <h1 class="display-6">RSS Reader</h1>
-      <form class="needs-validation" novalidate>
-        <div class="form-group">
-          <div class="mb-1">
-            <input type="text" class="form-control form-control-sm" placeholder="Add RSS-feed" required>
-            <div class="invalid-feedback">
-              Please enter a valid or non-duplicating RSS-feed.
+        <h1 class="display-6">RSS Reader</h1>
+        <form class="needs-validation" novalidate>
+            <div class="form-group">
+                <div class="mb-1">
+                    <input type="text" class="form-control form-control-sm" placeholder="Add RSS-feed" required>
+                    <div class="invalid-feedback">
+                        Please enter a valid or non-duplicated RSS-feed.
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" type="submit">Add</button>
             </div>
-          </div>
-          <button class="btn btn-primary btn-sm" type="submit">Add</button>          
+        </form>
+        <div class="container">
+            <div class="row">
+                <!-- RSS-feed list -->
+                <div class="col-12 col-md-4">
+                </div>
+                <!-- white-space -->
+                <div class="col-12 col-md-1">
+                </div>
+                <!-- articles list -->
+                <div class="list-group col-12 col-md-7">
+                </div>
+                <!-- modal -->
+                <!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal" data-whatever="@mdo">Open modal for @mdo</button> -->
+                
+                <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                Modal body text
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Button name</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- end -->
+            </div>
         </div>
-        
-      </form>
-      <div class="container">
-          <div class="row">
-            <div class="col-12 col-md-4">
-            </div>
-            <div class="col-12 col-md-1">
-            </div>
-            <div class="list-group col-12 col-md-7">
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
     </div>
     <script src="bundle.js"></script>
-  </body>
+</body>
+
 </html>
