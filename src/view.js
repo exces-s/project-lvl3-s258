@@ -61,7 +61,7 @@ const createRssFeedElement = (rssUrl, rssData) => {
   rssFeedElement.classList.add('row');
   rssFeedElement.innerHTML = `
       <ul class="class="list-group list-group-flush">
-        <li class="list-group-item">${title}</li>
+        <li class="list-group-item"><strong>${title}</strong></li>
         <li class="list-group-item">${description}</li>
       </ul>
     `;
@@ -107,18 +107,18 @@ export const renderRssData = (root, rssData) => {
   renderRssFeedsListHtml(rssFeedsListRoot, rssData);
 };
 
-const isInvalidRssUrl = rssUrl => getRssUrlValidateType(rssUrl) === 'invalid';
-const isDuplicateRssUrl = rssUrl => getRssUrlValidateType(rssUrl) === 'duplicate';
-const isEmptyRssUrl = rssUrl => getRssUrlValidateType(rssUrl) === 'empty';
+const isInvalidRssUrl = (url, data) => getRssUrlValidateType(url, data) === 'invalid';
+const isDuplicateRssUrl = (url, data) => getRssUrlValidateType(url, data) === 'duplicate';
+const isEmptyRssUrl = (url, data) => getRssUrlValidateType(url, data) === 'empty';
 
-export const displayAlertForNotValidRssUrl = (url) => {
-  if (isInvalidRssUrl(url)) {
+export const displayAlertForNotValidRssUrl = (url, data) => {
+  if (isInvalidRssUrl(url, data)) {
     displayAlert('invalidUrl');
   } else
-  if (isDuplicateRssUrl(url)) {
+  if (isDuplicateRssUrl(url, data)) {
     displayAlert('duplicatedRssFeed');
   } else
-  if (isEmptyRssUrl(url)) {
+  if (isEmptyRssUrl(url, data)) {
     displayAlert('enterRssFeed');
   }
 };

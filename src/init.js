@@ -55,7 +55,6 @@ const getArticles = (document) => {
 const getRssFeedObj = (document) => {
   const description = document.querySelector('description').textContent;
   const title = document.querySelector('title').textContent;
-  // return { [url]: [description, title] };
   return { description, title };
 };
 
@@ -69,7 +68,8 @@ const parseRssData = (xmlData) => {
 const clearRssUrl = (data) => {
   data.rssUrl = '';                  // eslint-disable-line
 };
-// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 export default () => {
   const rssData = {
     rssUrl: {},
@@ -97,15 +97,17 @@ export default () => {
     modalBody.textContent = button.dataset.description;
   });
 
+
   rssAddForm.addEventListener('input', (e) => {
     rssData.rssUrl = e.target.value;
     view.colorInput(rssData, input);
   });
 
+
   rssAddForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!isUrlValid(rssData.rssUrl, rssData)) {
-      view.displayAlertForNotValidRssUrl(rssData.rssUrl);
+      view.displayAlertForNotValidRssUrl(rssData.rssUrl, rssData);
     } else {
       view.renderWorkInProcess(root);
       axios.get(`${corsProxy}${rssData.rssUrl}`)
