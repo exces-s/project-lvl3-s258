@@ -1,5 +1,5 @@
 import alertMessages from './alertMessages';
-import getRssUrlValidateType from './index';
+import { getRssUrlValidateType } from './init';
 
 
 const colorInputActions = {
@@ -48,19 +48,21 @@ const toggleButtonActivityMode = (buttonElement) => {
 };
 
 const toggleInputReadonlyMode = (inputElement) => {
-  inputElement.hasAttribute('readonly') ?   // eslint-disable-line
-    inputElement.removeAttribute('readonly') :
+  if (inputElement.hasAttribute('readonly')) {   // eslint-disable-line
+    inputElement.removeAttribute('readonly');
+  } else {
     inputElement.setAttribute('readonly', true);
+  }
 };
 
 const createRssFeedElement = (rssUrl, rssData) => {
-  const [title, description] = rssData.rssFeeds[rssUrl];
+  const { title, description } = rssData.rssFeeds[rssUrl];
   const rssFeedElement = document.createElement('div');
   rssFeedElement.classList.add('row');
   rssFeedElement.innerHTML = `
       <ul class="class="list-group list-group-flush">
-        <li class="list-group-item">${description}</li>
         <li class="list-group-item">${title}</li>
+        <li class="list-group-item">${description}</li>
       </ul>
     `;
   return rssFeedElement;
