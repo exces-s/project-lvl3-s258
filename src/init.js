@@ -34,6 +34,9 @@ export const getRssUrlValidateType = (url, data) => {
 
 const isStatus200 = res => res.status === 200;
 
+const getRssData = url => axios.get(url)
+  .then(res => (isStatus200(res) ? res : Promise.reject(res)));
+
 const xmlParse = (data) => {
   const domParser = new DOMParser();
   return domParser.parseFromString(data, 'application/xml');
@@ -69,6 +72,26 @@ const clearRssUrl = (data) => {
   data.rssUrl = '';                  // eslint-disable-line
 };
 
+const updateAllArticles = (state, proxy, root) => {
+  const timer = 5000;
+  if (_.isEmpty(state.rssFeeds)) {
+    return setTimeout(updateAllArticles, timer, state, proxy, root);
+  }
+  const urls = Object.keys(state.rssFeeds);
+  return Promise.all(urls.map(url => getRssData(`${proxy}${url}`)))
+    .then(rssDatasArr => rssDatasArr
+      .map(({ data }) => parseRssData(data))
+      .reduce((acc, { articles }) => [...acc, ...articles], [])
+      .filter(article => !state.articles.includes(article))
+      .forEach(article => state.articles.push(article)))
+    .then(() => view.renderRssData(root, state))
+    .then(setTimeout(updateAllArticles, timer, state, proxy, root))
+    .catch((err) => {
+      console.log('Error for update articles');
+      console.log(err);
+    });
+};
+
 
 export default () => {
   const rssData = {
@@ -91,18 +114,16 @@ export default () => {
 
   $('#exampleModal').on('show.bs.modal', function fn(event) {
     const button = event.relatedTarget;
-    const modalTitle = this.querySelector('h5');
+    const modalTitle = this.querySelector('.modal-title');
     const modalBody = this.querySelector('.modal-body');
     modalTitle.textContent = button.dataset.title;
     modalBody.textContent = button.dataset.description;
   });
 
-
   rssAddForm.addEventListener('input', (e) => {
     rssData.rssUrl = e.target.value;
     view.colorInput(rssData, input);
   });
-
 
   rssAddForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -110,9 +131,7 @@ export default () => {
       view.displayAlertForNotValidRssUrl(rssData.rssUrl, rssData);
     } else {
       view.renderWorkInProcess(root);
-      axios.get(`${corsProxy}${rssData.rssUrl}`)
-        .then(res => (isStatus200(res) ?
-          res : Promise.reject(res)))
+      getRssData(`${corsProxy}${rssData.rssUrl}`)
         .then(({ data }) => {
           const parsedData = parseRssData(data, rssData.rssUrl);
           rssData.rssFeeds = { ...rssData.rssFeeds, [rssData.rssUrl]: parsedData.rssFeedObj };
@@ -123,39 +142,13 @@ export default () => {
           view.renderWorkIsDone(root);
           clearRssUrl(rssData);
         })
-        // .then(() => setTimeout(updateAllArticles(rssData), 5000))
         .catch((err) => {
           console.log('Error in submit', err);
           view.renderNetworkError(root);
         });
     }
   });
+
+  const timer = 5000;
+  setTimeout(updateAllArticles, timer, rssData, corsProxy, root);
 };
-
-
-// const updateRssFeedArticles = (url, state) => {
-//   console.log('updateFeed');
-//   axios.get(`${corsProxy}${url}`)
-//     .then(res => (isStatus200(res) ?
-//       res : Promise.reject(res)))
-//     .then(({ data }) => {
-//       console.log('parsing');
-//       const parsedData = parseRssData(data, url);
-//       console.log(parsedData.articles);
-//       parsedData.articles.filter(item => !state.articles.includes(item))
-//         .forEach(item => state.articles.push(item));
-//       console.log('endParsing');
-//     })
-//     .then(() => {
-//       view.renderRssData(root, rssData);
-//       console.log('Feed_Updated');
-//     })
-//     .catch(err => console.log('error in update', err));
-// };
-
-// const updateAllArticles = (state) => {
-//   const urls = Object.keys(state.rssFeeds);
-//   console.log('before PromiseAll');
-//   return Promise.all(urls.forEach(item => updateRssFeedArticles(item, state)))
-//     .then(() => setTimeout(updateAllArticles(rssData), 5000));
-// };
