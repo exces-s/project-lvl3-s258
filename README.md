@@ -12,7 +12,6 @@ surge: http://solid-hope.surge.sh/
 sh
 
 ### Run
-sh
 ```
 make develop
 ```
